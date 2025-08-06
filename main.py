@@ -61,6 +61,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
     return user
 
+
 # Auth
 @app.post("/token", response_model=schemas.Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -69,6 +70,16 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     access_token = create_access_token(data={"sub": user.email}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     return {"access_token": access_token, "token_type": "bearer"}
+
+# Alias para /login (acepta el mismo body que /token)
+@app.post("/login", response_model=schemas.Token)
+def login_alias(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    return login_for_access_token(form_data, db)
+
+# Alias para /register (acepta el mismo body que /usuarios/)
+@app.post("/register", response_model=schemas.Usuario)
+def register_alias(usuario: schemas.UsuarioCreate, db: Session = Depends(get_db)):
+    return create_usuario(usuario, db)
 
 # Usuarios
 
