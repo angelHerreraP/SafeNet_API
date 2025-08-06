@@ -103,7 +103,7 @@ def create_usuario(usuario: schemas.UsuarioCreate, db: Session = Depends(get_db)
         nombre=usuario.nombre,
         email=usuario.email,
         password_hash=hashed_password,
-        rol="user"  # Cambia aquí si tu constraint permite otro valor
+        rol="estudiante"  # Valor permitido por el constraint
     )
     db.add(db_usuario)
     db.commit()
