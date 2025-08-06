@@ -77,9 +77,17 @@ def login_alias(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     return login_for_access_token(form_data, db)
 
 # Alias para /register (acepta el mismo body que /usuarios/)
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
 @app.post("/register", response_model=schemas.Usuario)
-def register_alias(usuario: schemas.UsuarioCreate, db: Session = Depends(get_db)):
+async def register_alias(usuario: schemas.UsuarioCreate, db: Session = Depends(get_db)):
     return create_usuario(usuario, db)
+
+# Permitir preflight para /register (CORS)
+@app.options("/register")
+async def options_register(request: Request):
+    return JSONResponse(status_code=200, content={})
 
 # Usuarios
 
