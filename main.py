@@ -98,11 +98,12 @@ def create_usuario(usuario: schemas.UsuarioCreate, db: Session = Depends(get_db)
     if db_usuario:
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_password = get_password_hash(usuario.password)
+    # Forzar rol a 'user' (o el valor permitido por el constraint de la base de datos)
     db_usuario = models.Usuario(
         nombre=usuario.nombre,
         email=usuario.email,
         password_hash=hashed_password,
-        rol=usuario.rol
+        rol="user"  # Cambia aquí si tu constraint permite otro valor
     )
     db.add(db_usuario)
     db.commit()
