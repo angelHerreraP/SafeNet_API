@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr, UUID4
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr, UUID4, Field
+from typing import Optional, List, Any
 from datetime import datetime
 
 class UsuarioBase(BaseModel):
@@ -115,3 +115,25 @@ class Certificacion(CertificacionBase):
 
     class Config:
         from_attributes = True
+
+class SesionLaboratorioBase(BaseModel):
+    laboratorio_id: int
+    tiempo_limite: int
+    avance: Optional[Any] = None
+
+class SesionLaboratorioCreate(SesionLaboratorioBase):
+    pass
+
+class SesionLaboratorioUpdate(BaseModel):
+    avance: Optional[Any] = None
+    estado: Optional[str] = None
+    fecha_fin: Optional[datetime] = None
+
+class SesionLaboratorio(SesionLaboratorioBase):
+    id: UUID4
+    usuario_id: UUID4
+    fecha_inicio: datetime
+    fecha_fin: Optional[datetime] = None
+    estado: str
+    class Config:
+        orm_mode = True

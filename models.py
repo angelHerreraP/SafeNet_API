@@ -1,5 +1,4 @@
-
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, ForeignKey, CheckConstraint, UniqueConstraint
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -20,6 +19,7 @@ class Usuario(Base):
     certificaciones = relationship("Certificacion", back_populates="usuario")
     auditorias = relationship("Auditoria", back_populates="usuario")
     sesiones = relationship("SesionJWT", back_populates="usuario")
+    sesiones_laboratorio = relationship("SesionLaboratorio", back_populates="usuario")
 
 class Modulo(Base):
     __tablename__ = "modulos"
@@ -91,3 +91,15 @@ class SesionJWT(Base):
     fecha_creacion = Column(DateTime, server_default=func.now())
     expiracion = Column(DateTime)
     usuario = relationship("Usuario", back_populates="sesiones")
+
+class SesionLaboratorio(Base):
+    __tablename__ = "sesiones_laboratorio"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False)
+    laboratorio_id = Column(Integer, nullable=False)
+    fecha_inicio = Column(DateTime, nullable=False)
+    fecha_fin = Column(DateTime)
+    estado = Column(String(20), nullable=False, default="activa")
+    avance = Column(JSON)
+    tiempo_limite = Column(Integer, nullable=False)
+    usuario = relationship("Usuario", back_populates="sesiones_laboratorio")
