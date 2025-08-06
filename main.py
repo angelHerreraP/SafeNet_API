@@ -14,7 +14,6 @@ from dotenv import load_dotenv
 load_dotenv()
 models.Base.metadata.create_all(bind=engine)
 
-
 app = FastAPI()
 
 # Configuración de CORS
@@ -26,7 +25,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app = FastAPI()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
