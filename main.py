@@ -66,6 +66,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 @app.post("/token", response_model=schemas.Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.Usuario).filter(models.Usuario.email == form_data.username).first()
+    # Validar campos manualmente para evitar error de validación de Pydantic
+    if not form_data.username or not form_data.password:
+        raise HTTPException(status_code=400, detail="Email y contraseña son requeridos")
     if not user:
         raise HTTPException(status_code=400, detail="Usuario no existe")
     if not user.activo:
