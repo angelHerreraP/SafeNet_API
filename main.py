@@ -94,7 +94,8 @@ from fastapi.responses import JSONResponse
 
 @app.post("/register", response_model=schemas.Usuario)
 async def register_alias(usuario: schemas.UsuarioCreate, db: Session = Depends(get_db)):
-    return create_usuario(usuario, db)
+    db_usuario = create_usuario(usuario, db)
+    return schemas.Usuario.from_orm(db_usuario)
 
 # Permitir preflight para /register (CORS)
 @app.options("/register")
@@ -110,12 +111,11 @@ def create_usuario(usuario: schemas.UsuarioCreate, db: Session = Depends(get_db)
     if db_usuario:
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_password = get_password_hash(usuario.password)
-    # Forzar rol a 'user' (o el valor permitido por el constraint de la base de datos)
     db_usuario = models.Usuario(
         nombre=usuario.nombre,
         email=usuario.email,
         password_hash=hashed_password,
-        rol="estudiante"  # Valor permitido por el constraint
+        rol="estudiante"
     )
     db.add(db_usuario)
     db.commit()
@@ -124,14 +124,15 @@ def create_usuario(usuario: schemas.UsuarioCreate, db: Session = Depends(get_db)
 
 @app.get("/usuarios/", response_model=list[schemas.Usuario])
 def list_usuarios(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(models.Usuario).offset(skip).limit(limit).all()
+    usuarios = db.query(models.Usuario).offset(skip).limit(limit).all()
+    return [schemas.Usuario.from_orm(u) for u in usuarios]
 
 @app.get("/usuarios/{usuario_id}", response_model=schemas.Usuario)
 def get_usuario(usuario_id: str, db: Session = Depends(get_db)):
     usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario not found")
-    return usuario
+    return schemas.Usuario.from_orm(usuario)
 
 @app.put("/usuarios/{usuario_id}", response_model=schemas.Usuario)
 def update_usuario(usuario_id: str, usuario: schemas.UsuarioCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
@@ -144,7 +145,7 @@ def update_usuario(usuario_id: str, usuario: schemas.UsuarioCreate, db: Session 
     db_usuario.password_hash = get_password_hash(usuario.password)
     db.commit()
     db.refresh(db_usuario)
-    return db_usuario
+    return schemas.Usuario.from_orm(db_usuario)
 
 @app.delete("/usuarios/{usuario_id}")
 def delete_usuario(usuario_id: str, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
@@ -164,18 +165,19 @@ def create_modulo(modulo: schemas.ModuloCreate, db: Session = Depends(get_db), u
     db.add(db_modulo)
     db.commit()
     db.refresh(db_modulo)
-    return db_modulo
+    return schemas.Modulo.from_orm(db_modulo)
 
 @app.get("/modulos/", response_model=list[schemas.Modulo])
 def list_modulos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(models.Modulo).offset(skip).limit(limit).all()
+    modulos = db.query(models.Modulo).offset(skip).limit(limit).all()
+    return [schemas.Modulo.from_orm(m) for m in modulos]
 
 @app.get("/modulos/{modulo_id}", response_model=schemas.Modulo)
 def get_modulo(modulo_id: int, db: Session = Depends(get_db)):
     modulo = db.query(models.Modulo).filter(models.Modulo.id == modulo_id).first()
     if not modulo:
         raise HTTPException(status_code=404, detail="Modulo not found")
-    return modulo
+    return schemas.Modulo.from_orm(modulo)
 
 @app.put("/modulos/{modulo_id}", response_model=schemas.Modulo)
 def update_modulo(modulo_id: int, modulo: schemas.ModuloCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
@@ -186,38 +188,27 @@ def update_modulo(modulo_id: int, modulo: schemas.ModuloCreate, db: Session = De
         setattr(db_modulo, k, v)
     db.commit()
     db.refresh(db_modulo)
-    return db_modulo
+    return schemas.Modulo.from_orm(db_modulo)
 
-@app.delete("/modulos/{modulo_id}")
-def delete_modulo(modulo_id: int, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    db_modulo = db.query(models.Modulo).filter(models.Modulo.id == modulo_id).first()
-    if not db_modulo:
-        raise HTTPException(status_code=404, detail="Modulo not found")
-    db.delete(db_modulo)
-    db.commit()
-    return {"ok": True}
-
-# Retos
-
-# --- RETOS CRUD ---
 @app.post("/retos/", response_model=schemas.Reto)
 def create_reto(reto: schemas.RetoCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
     db_reto = models.Reto(**reto.dict())
     db.add(db_reto)
     db.commit()
     db.refresh(db_reto)
-    return db_reto
+    return schemas.Reto.from_orm(db_reto)
 
 @app.get("/retos/", response_model=list[schemas.Reto])
 def list_retos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(models.Reto).offset(skip).limit(limit).all()
+    retos = db.query(models.Reto).offset(skip).limit(limit).all()
+    return [schemas.Reto.from_orm(r) for r in retos]
 
 @app.get("/retos/{reto_id}", response_model=schemas.Reto)
 def get_reto(reto_id: int, db: Session = Depends(get_db)):
     reto = db.query(models.Reto).filter(models.Reto.id == reto_id).first()
     if not reto:
         raise HTTPException(status_code=404, detail="Reto not found")
-    return reto
+    return schemas.Reto.from_orm(reto)
 
 @app.put("/retos/{reto_id}", response_model=schemas.Reto)
 def update_reto(reto_id: int, reto: schemas.RetoCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
@@ -228,38 +219,27 @@ def update_reto(reto_id: int, reto: schemas.RetoCreate, db: Session = Depends(ge
         setattr(db_reto, k, v)
     db.commit()
     db.refresh(db_reto)
-    return db_reto
+    return schemas.Reto.from_orm(db_reto)
 
-@app.delete("/retos/{reto_id}")
-def delete_reto(reto_id: int, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    db_reto = db.query(models.Reto).filter(models.Reto.id == reto_id).first()
-    if not db_reto:
-        raise HTTPException(status_code=404, detail="Reto not found")
-    db.delete(db_reto)
-    db.commit()
-    return {"ok": True}
-
-# Progreso
-
-# --- PROGRESO CRUD ---
 @app.post("/progreso/", response_model=schemas.ProgresoUsuario)
 def create_progreso(progreso: schemas.ProgresoUsuarioCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
     db_progreso = models.ProgresoUsuario(**progreso.dict())
     db.add(db_progreso)
     db.commit()
     db.refresh(db_progreso)
-    return db_progreso
+    return schemas.ProgresoUsuario.from_orm(db_progreso)
 
 @app.get("/progreso/", response_model=list[schemas.ProgresoUsuario])
 def list_progreso(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(models.ProgresoUsuario).offset(skip).limit(limit).all()
+    progresos = db.query(models.ProgresoUsuario).offset(skip).limit(limit).all()
+    return [schemas.ProgresoUsuario.from_orm(p) for p in progresos]
 
 @app.get("/progreso/{progreso_id}", response_model=schemas.ProgresoUsuario)
 def get_progreso(progreso_id: int, db: Session = Depends(get_db)):
     progreso = db.query(models.ProgresoUsuario).filter(models.ProgresoUsuario.id == progreso_id).first()
     if not progreso:
         raise HTTPException(status_code=404, detail="Progreso not found")
-    return progreso
+    return schemas.ProgresoUsuario.from_orm(progreso)
 
 @app.put("/progreso/{progreso_id}", response_model=schemas.ProgresoUsuario)
 def update_progreso(progreso_id: int, progreso: schemas.ProgresoUsuarioCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
@@ -270,38 +250,27 @@ def update_progreso(progreso_id: int, progreso: schemas.ProgresoUsuarioCreate, d
         setattr(db_progreso, k, v)
     db.commit()
     db.refresh(db_progreso)
-    return db_progreso
+    return schemas.ProgresoUsuario.from_orm(db_progreso)
 
-@app.delete("/progreso/{progreso_id}")
-def delete_progreso(progreso_id: int, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    db_progreso = db.query(models.ProgresoUsuario).filter(models.ProgresoUsuario.id == progreso_id).first()
-    if not db_progreso:
-        raise HTTPException(status_code=404, detail="Progreso not found")
-    db.delete(db_progreso)
-    db.commit()
-    return {"ok": True}
-
-# Feedback
-
-# --- FEEDBACK CRUD ---
 @app.post("/feedback/", response_model=schemas.Feedback)
 def create_feedback(feedback: schemas.FeedbackCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
     db_feedback = models.Feedback(**feedback.dict())
     db.add(db_feedback)
     db.commit()
     db.refresh(db_feedback)
-    return db_feedback
+    return schemas.Feedback.from_orm(db_feedback)
 
 @app.get("/feedback/", response_model=list[schemas.Feedback])
 def list_feedback(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(models.Feedback).offset(skip).limit(limit).all()
+    feedbacks = db.query(models.Feedback).offset(skip).limit(limit).all()
+    return [schemas.Feedback.from_orm(f) for f in feedbacks]
 
 @app.get("/feedback/{feedback_id}", response_model=schemas.Feedback)
 def get_feedback(feedback_id: int, db: Session = Depends(get_db)):
     feedback = db.query(models.Feedback).filter(models.Feedback.id == feedback_id).first()
     if not feedback:
         raise HTTPException(status_code=404, detail="Feedback not found")
-    return feedback
+    return schemas.Feedback.from_orm(feedback)
 
 @app.put("/feedback/{feedback_id}", response_model=schemas.Feedback)
 def update_feedback(feedback_id: int, feedback: schemas.FeedbackCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
@@ -312,38 +281,27 @@ def update_feedback(feedback_id: int, feedback: schemas.FeedbackCreate, db: Sess
         setattr(db_feedback, k, v)
     db.commit()
     db.refresh(db_feedback)
-    return db_feedback
+    return schemas.Feedback.from_orm(db_feedback)
 
-@app.delete("/feedback/{feedback_id}")
-def delete_feedback(feedback_id: int, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    db_feedback = db.query(models.Feedback).filter(models.Feedback.id == feedback_id).first()
-    if not db_feedback:
-        raise HTTPException(status_code=404, detail="Feedback not found")
-    db.delete(db_feedback)
-    db.commit()
-    return {"ok": True}
-
-# Certificaciones
-
-# --- CERTIFICACIONES CRUD ---
 @app.post("/certificaciones/", response_model=schemas.Certificacion)
 def create_certificacion(cert: schemas.CertificacionCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
     db_cert = models.Certificacion(**cert.dict())
     db.add(db_cert)
     db.commit()
     db.refresh(db_cert)
-    return db_cert
+    return schemas.Certificacion.from_orm(db_cert)
 
 @app.get("/certificaciones/", response_model=list[schemas.Certificacion])
 def list_certificaciones(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(models.Certificacion).offset(skip).limit(limit).all()
+    certs = db.query(models.Certificacion).offset(skip).limit(limit).all()
+    return [schemas.Certificacion.from_orm(c) for c in certs]
 
 @app.get("/certificaciones/{certificacion_id}", response_model=schemas.Certificacion)
 def get_certificacion(certificacion_id: int, db: Session = Depends(get_db)):
     cert = db.query(models.Certificacion).filter(models.Certificacion.id == certificacion_id).first()
     if not cert:
         raise HTTPException(status_code=404, detail="Certificacion not found")
-    return cert
+    return schemas.Certificacion.from_orm(cert)
 
 @app.put("/certificaciones/{certificacion_id}", response_model=schemas.Certificacion)
 def update_certificacion(certificacion_id: int, cert: schemas.CertificacionCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
@@ -354,23 +312,13 @@ def update_certificacion(certificacion_id: int, cert: schemas.CertificacionCreat
         setattr(db_cert, k, v)
     db.commit()
     db.refresh(db_cert)
-    return db_cert
-
-@app.delete("/certificaciones/{certificacion_id}")
-def delete_certificacion(certificacion_id: int, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    db_cert = db.query(models.Certificacion).filter(models.Certificacion.id == certificacion_id).first()
-    if not db_cert:
-        raise HTTPException(status_code=404, detail="Certificacion not found")
-    db.delete(db_cert)
-    db.commit()
-    return {"ok": True}
+    return schemas.Certificacion.from_orm(db_cert)
 
 # --- SESIONES DE LABORATORIO ---
 lab_router = APIRouter()
 
 @lab_router.post("/sesiones_laboratorio/", response_model=SesionLaboratorio)
 def crear_sesion_laboratorio(sesion: SesionLaboratorioCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    # Solo permite una sesión activa por usuario y laboratorio
     sesion_existente = db.query(SesionLaboratorio).filter(
         SesionLaboratorio.usuario_id == user.id,
         SesionLaboratorio.laboratorio_id == sesion.laboratorio_id,
