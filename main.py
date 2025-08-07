@@ -388,14 +388,14 @@ def crear_sesion_laboratorio(sesion: SesionLaboratorioCreate, db: Session = Depe
     db.add(nueva_sesion)
     db.commit()
     db.refresh(nueva_sesion)
-    return nueva_sesion
+    return SesionLaboratorio.from_orm(nueva_sesion)
 
 @lab_router.get("/sesiones_laboratorio/{sesion_id}", response_model=SesionLaboratorio)
 def obtener_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
     sesion = db.query(SesionLaboratorio).filter(SesionLaboratorio.id == sesion_id, SesionLaboratorio.usuario_id == user.id).first()
     if not sesion:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
-    return sesion
+    return SesionLaboratorio.from_orm(sesion)
 
 @lab_router.put("/sesiones_laboratorio/{sesion_id}/avance", response_model=SesionLaboratorio)
 def actualizar_avance_sesion(sesion_id: UUID, avance: SesionLaboratorioUpdate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
@@ -408,7 +408,7 @@ def actualizar_avance_sesion(sesion_id: UUID, avance: SesionLaboratorioUpdate, d
         sesion.avance = avance.avance
     db.commit()
     db.refresh(sesion)
-    return sesion
+    return SesionLaboratorio.from_orm(sesion)
 
 @lab_router.post("/sesiones_laboratorio/{sesion_id}/finalizar", response_model=SesionLaboratorio)
 def finalizar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
@@ -421,7 +421,7 @@ def finalizar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db),
     sesion.fecha_fin = datetime.utcnow()
     db.commit()
     db.refresh(sesion)
-    return sesion
+    return SesionLaboratorio.from_orm(sesion)
 
 @lab_router.post("/sesiones_laboratorio/{sesion_id}/expirar", response_model=SesionLaboratorio)
 def expirar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
@@ -435,7 +435,7 @@ def expirar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), u
     sesion.avance = None  # Eliminar avance
     db.commit()
     db.refresh(sesion)
-    return sesion
+    return SesionLaboratorio.from_orm(sesion)
 
 @lab_router.delete("/sesiones_laboratorio/{sesion_id}")
 def eliminar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):

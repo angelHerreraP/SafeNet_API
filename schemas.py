@@ -135,5 +135,4 @@ class SesionLaboratorio(SesionLaboratorioBase):
     fecha_inicio: datetime
     fecha_fin: Optional[datetime] = None
     estado: str
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
