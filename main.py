@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -10,6 +9,12 @@ import models, schemas
 from database import engine, get_db
 import os
 from dotenv import load_dotenv
+from fastapi import APIRouter
+from sqlalchemy.exc import SQLAlchemyError
+from schemas import SesionLaboratorioCreate, SesionLaboratorio, SesionLaboratorioUpdate
+from models import SesionLaboratorio
+from uuid import UUID
+from typing import List
 
 load_dotenv()
 models.Base.metadata.create_all(bind=engine)
@@ -359,3 +364,111 @@ def delete_certificacion(certificacion_id: int, db: Session = Depends(get_db), u
     db.delete(db_cert)
     db.commit()
     return {"ok": True}
+
+# --- SESIONES DE LABORATORIO ---
+lab_router = APIRouter()
+
+@lab_router.post("/sesiones_laboratorio/", response_model=SesionLaboratorio)
+def crear_sesion_laboratorio(sesion: SesionLaboratorioCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
+    # Solo permite una sesión activa por usuario y laboratorio
+    sesion_existente = db.query(SesionLaboratorio).filter(
+        SesionLaboratorio.usuario_id == user.id,
+        SesionLaboratorio.laboratorio_id == sesion.laboratorio_id,
+        SesionLaboratorio.estado == "activa"
+    ).first()
+    if sesion_existente:
+        raise HTTPException(status_code=400, detail="Ya existe una sesión activa para este laboratorio")
+    nueva_sesion = SesionLaboratorio(
+        usuario_id=user.id,
+        laboratorio_id=sesion.laboratorio_id,
+        fecha_inicio=datetime.utcnow(),
+        estado="activa",
+        tiempo_limite=sesion.tiempo_limite
+    )
+    db.add(nueva_sesion)
+    db.commit()
+    db.refresh(nueva_sesion)
+    return nueva_sesion
+
+@lab_router.get("/sesiones_laboratorio/{sesion_id}", response_model=SesionLaboratorio)
+def obtener_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
+    sesion = db.query(SesionLaboratorio).filter(SesionLaboratorio.id == sesion_id, SesionLaboratorio.usuario_id == user.id).first()
+    if not sesion:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    return sesion
+
+@lab_router.put("/sesiones_laboratorio/{sesion_id}/avance", response_model=SesionLaboratorio)
+def actualizar_avance_sesion(sesion_id: UUID, avance: SesionLaboratorioUpdate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
+    sesion = db.query(SesionLaboratorio).filter(SesionLaboratorio.id == sesion_id, SesionLaboratorio.usuario_id == user.id).first()
+    if not sesion:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    if sesion.estado != "activa":
+        raise HTTPException(status_code=400, detail="No se puede actualizar una sesión no activa")
+    if avance.avance is not None:
+        sesion.avance = avance.avance
+    db.commit()
+    db.refresh(sesion)
+    return sesion
+
+@lab_router.post("/sesiones_laboratorio/{sesion_id}/finalizar", response_model=SesionLaboratorio)
+def finalizar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
+    sesion = db.query(SesionLaboratorio).filter(SesionLaboratorio.id == sesion_id, SesionLaboratorio.usuario_id == user.id).first()
+    if not sesion:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    if sesion.estado != "activa":
+        raise HTTPException(status_code=400, detail="La sesión ya está finalizada o expirada")
+    sesion.estado = "completada"
+    sesion.fecha_fin = datetime.utcnow()
+    db.commit()
+    db.refresh(sesion)
+    return sesion
+
+@lab_router.post("/sesiones_laboratorio/{sesion_id}/expirar", response_model=SesionLaboratorio)
+def expirar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
+    sesion = db.query(SesionLaboratorio).filter(SesionLaboratorio.id == sesion_id, SesionLaboratorio.usuario_id == user.id).first()
+    if not sesion:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    if sesion.estado != "activa":
+        raise HTTPException(status_code=400, detail="La sesión ya está finalizada o expirada")
+    sesion.estado = "expirada"
+    sesion.fecha_fin = datetime.utcnow()
+    sesion.avance = None  # Eliminar avance
+    db.commit()
+    db.refresh(sesion)
+    return sesion
+
+@lab_router.delete("/sesiones_laboratorio/{sesion_id}")
+def eliminar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
+    sesion = db.query(SesionLaboratorio).filter(SesionLaboratorio.id == sesion_id, SesionLaboratorio.usuario_id == user.id).first()
+    if not sesion:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+    db.delete(sesion)
+    db.commit()
+    return {"ok": True}
+
+@lab_router.post("/labs/start")
+def lanzar_laboratorio(sesion: SesionLaboratorioCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
+    # Solo permite una sesión activa por usuario y laboratorio
+    sesion_existente = db.query(SesionLaboratorio).filter(
+        SesionLaboratorio.usuario_id == user.id,
+        SesionLaboratorio.laboratorio_id == sesion.laboratorio_id,
+        SesionLaboratorio.estado == "activa"
+    ).first()
+    if sesion_existente:
+        session_id = sesion_existente.id
+    else:
+        nueva_sesion = SesionLaboratorio(
+            usuario_id=user.id,
+            laboratorio_id=sesion.laboratorio_id,
+            fecha_inicio=datetime.utcnow(),
+            estado="activa",
+            tiempo_limite=sesion.tiempo_limite
+        )
+        db.add(nueva_sesion)
+        db.commit()
+        db.refresh(nueva_sesion)
+        session_id = nueva_sesion.id
+    url = f"https://glittering-taffy-a43665.netlify.app/?session_id={session_id}"
+    return {"url": url, "session_id": str(session_id)}
+
+app.include_router(lab_router)
