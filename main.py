@@ -396,6 +396,7 @@ def eliminar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), 
 
 @lab_router.post("/labs/start")
 def lanzar_laboratorio(sesion: SesionLaboratorioCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
+    LAB_URL = "https://glittering-taffy-a43665.netlify.app/"
     sesion_existente = db.query(SesionLaboratorioModel).filter(
         SesionLaboratorioModel.usuario_id == user.id,
         SesionLaboratorioModel.laboratorio_id == sesion.laboratorio_id,
@@ -415,7 +416,7 @@ def lanzar_laboratorio(sesion: SesionLaboratorioCreate, db: Session = Depends(ge
         db.commit()
         db.refresh(nueva_sesion)
         session_id = nueva_sesion.id
-    url = f"https://glittering-taffy-a43665.netlify.app/?session_id={session_id}"
+    url = f"{LAB_URL}?session_id={session_id}"
     return {"url": url, "session_id": str(session_id)}
 
 app.include_router(lab_router)
