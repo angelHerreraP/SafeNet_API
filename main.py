@@ -448,7 +448,6 @@ def eliminar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), 
 
 @lab_router.post("/labs/start")
 def lanzar_laboratorio(sesion: SesionLaboratorioCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    # Solo permite una sesión activa por usuario y laboratorio
     sesion_existente = db.query(SesionLaboratorio).filter(
         SesionLaboratorio.usuario_id == user.id,
         SesionLaboratorio.laboratorio_id == sesion.laboratorio_id,
