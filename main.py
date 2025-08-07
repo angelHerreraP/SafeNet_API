@@ -11,8 +11,8 @@ import os
 from dotenv import load_dotenv
 from fastapi import APIRouter
 from sqlalchemy.exc import SQLAlchemyError
-from schemas import SesionLaboratorioCreate, SesionLaboratorio, SesionLaboratorioUpdate
-from models import SesionLaboratorio
+from schemas import SesionLaboratorio, SesionLaboratorioCreate, SesionLaboratorioUpdate
+from models import SesionLaboratorio as SesionLaboratorioModel
 from uuid import UUID
 from typing import List
 
@@ -319,14 +319,14 @@ lab_router = APIRouter()
 
 @lab_router.post("/sesiones_laboratorio/", response_model=SesionLaboratorio)
 def crear_sesion_laboratorio(sesion: SesionLaboratorioCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    sesion_existente = db.query(SesionLaboratorio).filter(
-        SesionLaboratorio.usuario_id == user.id,
-        SesionLaboratorio.laboratorio_id == sesion.laboratorio_id,
-        SesionLaboratorio.estado == "activa"
+    sesion_existente = db.query(SesionLaboratorioModel).filter(
+        SesionLaboratorioModel.usuario_id == user.id,
+        SesionLaboratorioModel.laboratorio_id == sesion.laboratorio_id,
+        SesionLaboratorioModel.estado == "activa"
     ).first()
     if sesion_existente:
         raise HTTPException(status_code=400, detail="Ya existe una sesión activa para este laboratorio")
-    nueva_sesion = SesionLaboratorio(
+    nueva_sesion = SesionLaboratorioModel(
         usuario_id=user.id,
         laboratorio_id=sesion.laboratorio_id,
         fecha_inicio=datetime.utcnow(),
@@ -340,14 +340,14 @@ def crear_sesion_laboratorio(sesion: SesionLaboratorioCreate, db: Session = Depe
 
 @lab_router.get("/sesiones_laboratorio/{sesion_id}", response_model=SesionLaboratorio)
 def obtener_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    sesion = db.query(SesionLaboratorio).filter(SesionLaboratorio.id == sesion_id, SesionLaboratorio.usuario_id == user.id).first()
+    sesion = db.query(SesionLaboratorioModel).filter(SesionLaboratorioModel.id == sesion_id, SesionLaboratorioModel.usuario_id == user.id).first()
     if not sesion:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
     return SesionLaboratorio.from_orm(sesion)
 
 @lab_router.put("/sesiones_laboratorio/{sesion_id}/avance", response_model=SesionLaboratorio)
 def actualizar_avance_sesion(sesion_id: UUID, avance: SesionLaboratorioUpdate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    sesion = db.query(SesionLaboratorio).filter(SesionLaboratorio.id == sesion_id, SesionLaboratorio.usuario_id == user.id).first()
+    sesion = db.query(SesionLaboratorioModel).filter(SesionLaboratorioModel.id == sesion_id, SesionLaboratorioModel.usuario_id == user.id).first()
     if not sesion:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
     if sesion.estado != "activa":
@@ -360,7 +360,7 @@ def actualizar_avance_sesion(sesion_id: UUID, avance: SesionLaboratorioUpdate, d
 
 @lab_router.post("/sesiones_laboratorio/{sesion_id}/finalizar", response_model=SesionLaboratorio)
 def finalizar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    sesion = db.query(SesionLaboratorio).filter(SesionLaboratorio.id == sesion_id, SesionLaboratorio.usuario_id == user.id).first()
+    sesion = db.query(SesionLaboratorioModel).filter(SesionLaboratorioModel.id == sesion_id, SesionLaboratorioModel.usuario_id == user.id).first()
     if not sesion:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
     if sesion.estado != "activa":
@@ -373,7 +373,7 @@ def finalizar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db),
 
 @lab_router.post("/sesiones_laboratorio/{sesion_id}/expirar", response_model=SesionLaboratorio)
 def expirar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    sesion = db.query(SesionLaboratorio).filter(SesionLaboratorio.id == sesion_id, SesionLaboratorio.usuario_id == user.id).first()
+    sesion = db.query(SesionLaboratorioModel).filter(SesionLaboratorioModel.id == sesion_id, SesionLaboratorioModel.usuario_id == user.id).first()
     if not sesion:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
     if sesion.estado != "activa":
@@ -387,7 +387,7 @@ def expirar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), u
 
 @lab_router.delete("/sesiones_laboratorio/{sesion_id}")
 def eliminar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    sesion = db.query(SesionLaboratorio).filter(SesionLaboratorio.id == sesion_id, SesionLaboratorio.usuario_id == user.id).first()
+    sesion = db.query(SesionLaboratorioModel).filter(SesionLaboratorioModel.id == sesion_id, SesionLaboratorioModel.usuario_id == user.id).first()
     if not sesion:
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
     db.delete(sesion)
@@ -396,15 +396,15 @@ def eliminar_sesion_laboratorio(sesion_id: UUID, db: Session = Depends(get_db), 
 
 @lab_router.post("/labs/start")
 def lanzar_laboratorio(sesion: SesionLaboratorioCreate, db: Session = Depends(get_db), user: models.Usuario = Depends(get_current_user)):
-    sesion_existente = db.query(SesionLaboratorio).filter(
-        SesionLaboratorio.usuario_id == user.id,
-        SesionLaboratorio.laboratorio_id == sesion.laboratorio_id,
-        SesionLaboratorio.estado == "activa"
+    sesion_existente = db.query(SesionLaboratorioModel).filter(
+        SesionLaboratorioModel.usuario_id == user.id,
+        SesionLaboratorioModel.laboratorio_id == sesion.laboratorio_id,
+        SesionLaboratorioModel.estado == "activa"
     ).first()
     if sesion_existente:
         session_id = sesion_existente.id
     else:
-        nueva_sesion = SesionLaboratorio(
+        nueva_sesion = SesionLaboratorioModel(
             usuario_id=user.id,
             laboratorio_id=sesion.laboratorio_id,
             fecha_inicio=datetime.utcnow(),
